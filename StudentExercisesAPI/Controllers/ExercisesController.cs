@@ -14,11 +14,11 @@ namespace StudentExercisesAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class InstructorsController : ControllerBase
+    public class ExercisesController : ControllerBase
     {
         private readonly IConfiguration _config;
 
-        public InstructorsController(IConfiguration config)
+        public ExercisesController(IConfiguration config)
         {
             _config = config;
         }
@@ -31,107 +31,77 @@ namespace StudentExercisesAPI.Controllers
             }
         }
 
-        // GET api/instructors?q=Taco
+        // GET api/exercises?q=Taco
         [HttpGet]
         public async Task<IActionResult> Get(string q)
         {
             string sql = @"
             SELECT
-                i.Id,
-                i.FirstName,
-                i.LastName,
-                i.SlackHandle,
-                i.Specialty,
-                i.CohortId,
-                c.Id,
-                c.Name
-            FROM Instructor i
-            JOIN Cohort c ON i.CohortId = c.Id
-            WHERE 1=1
+                e.Id,
+                e.Name,
+                e.Language
+            FROM Exercise e
             ";
-
-            if (q != null)
-            {
-                string isQ = $@"
-                    AND i.FirstName LIKE '%{q}%'
-                    OR i.LastName LIKE '%{q}%'
-                    OR i.SlackHandle LIKE '%{q}%'
-                ";
-                sql = $"{sql} {isQ}";
-            }
-
-            Console.WriteLine(sql);
 
             using (IDbConnection conn = Connection)
             {
 
-                IEnumerable<Instructor> instructors = await conn.QueryAsync<Instructor, Cohort, Instructor>(
-                    sql,
-                    (instructor, cohort) =>
-                    {
-                        instructor.Cohort = cohort;
-                        return instructor;
-                    }
+                IEnumerable<Exercise> exercises = await conn.QueryAsync<Exercise>(
+                    sql
                 );
-                return Ok(instructors);
+                return Ok(exercises);
             }
         }
 
         // GET api/instructors/5
-        [HttpGet("{id}", Name = "GetInstructor")]
+        [HttpGet("{id}", Name = "GetExercise")]
         public async Task<IActionResult> Get([FromRoute]int id)
         {
             string sql = $@"
             SELECT
-                i.Id,
-                i.FirstName,
-                i.LastName,
-                i.SlackHandle,
-                i.Specialty
-                i.CohortId
-            FROM Student i
-            WHERE s.Id = {id}
+                e.Id,
+                e.Name,
+                e.Language,
+            FROM Exercise e
+            WHERE e.Id = {id}
             ";
 
             using (IDbConnection conn = Connection)
             {
-                IEnumerable<Student> students = await conn.QueryAsync<Student>(sql);
-                return Ok(students);
+                IEnumerable<Exercise> exercises = await conn.QueryAsync<Exercise>(sql);
+                return Ok(exercises);
             }
         }
 
         // POST api/instructors
         [HttpPost]
-        public async Task<IActionResult> Post([FromBody] Instructor instructor)
+        public async Task<IActionResult> Post([FromBody] Exercise exercise)
         {
-            string sql = $@"INSERT INTO Student 
-            (FirstName, LastName, SlackHandle, CohortId)
+            string sql = $@"INSERT INTO Exercise 
+            (Name, Language)
             VALUES
             (
-                '{instructor.FirstName}'
-                ,'{instructor.LastName}'
-                ,'{instructor.SlackHandle}'
-                ,{instructor.CohortId}
+                '{exercise.Name}'
+                ,'{exercise.Language}'
             );
             SELECT SCOPE_IDENTITY();";
 
             using (IDbConnection conn = Connection)
             {
                 var newId = (await conn.QueryAsync<int>(sql)).Single();
-                instructor.Id = newId;
-                return CreatedAtRoute("GetInstructor", new { id = newId }, instructor);
+                exercise.Id = newId;
+                return CreatedAtRoute("GetInstructor", new { id = newId }, exercise);
             }
         }
 
-        // PUT api/instructors/5
+        // PUT api/exercises/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> Put(int id, [FromBody] Instructor instructor)
+        public async Task<IActionResult> Put(int id, [FromBody] Exercise exercise)
         {
             string sql = $@"
-            UPDATE Instructor
-            SET FirstName = '{instructor.FirstName}',
-                LastName = '{instructor.LastName}',
-                SlackHandle = '{instructor.SlackHandle}'
+            UPDATE Exercise
+            SET Name = '{exercise.Name}',
+                Language = '{exercise.Language}
             WHERE Id = {id}";
 
             try
@@ -148,7 +118,7 @@ namespace StudentExercisesAPI.Controllers
             }
             catch (Exception)
             {
-                if (!InstructorExists(id))
+                if (!ExerciseExists(id))
                 {
                     return NotFound();
                 }
@@ -159,11 +129,11 @@ namespace StudentExercisesAPI.Controllers
             }
         }
 
-        // DELETE api/instructors/5
+        // DELETE api/exercises/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
-            string sql = $@"DELETE FROM Instructor WHERE Id = {id}";
+            string sql = $@"DELETE FROM Exercise WHERE Id = {id}";
 
             using (IDbConnection conn = Connection)
             {
@@ -177,9 +147,9 @@ namespace StudentExercisesAPI.Controllers
 
         }
 
-        private bool InstructorExists(int id)
+        private bool ExerciseExists(int id)
         {
-            string sql = $"SELECT Id FROM Instructor WHERE Id = {id}";
+            string sql = $"SELECT Id FROM Excerise WHERE Id = {id}";
             using (IDbConnection conn = Connection)
             {
                 return conn.Query<Student>(sql).Count() > 0;
